@@ -9,6 +9,7 @@
 # 0.2.3 Fixed listings for usernames starting with a hyphen
 # 0.2.4 Bot ignores [rvw] listings
 # 0.2.5 Fixed Unicode characters not being matched by regex
+# 0.3 message overhaul
 
 version='0.3'
 
