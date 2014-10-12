@@ -10,8 +10,9 @@
 # 0.2.4 Bot ignores [rvw] listings
 # 0.2.5 Fixed Unicode characters not being matched by regex
 # 0.3 message overhaul
+# 0.3.1 fixed 
 
-version='0.3'
+version='0.3.1'
 
 import os
 import praw
@@ -91,8 +92,10 @@ for i in feed.entries:
 	print(cur.rowcount)
 	if cur.rowcount < 1:
 		sub = r.get_submission(i.link)
-		reg = re.compile("^\[[METAmetaBUYbuyrvwRVW]+\]") # http://stackoverflow.com/questions/9942594/unicodeencodeerror-ascii-codec-cant-encode-character-u-xa0-in-position-20
-		if not reg.match(sub.title.encode('utf-8')):
+		reg = re.compile("^\[[METAmetaRVWrvwBUYbuy]+\]") # http://stackoverflow.com/questions/9942594/unicodeencodeerror-ascii-codec-cant-encode-character-u-xa0-in-position-20
+		if reg.match(sub.title.encode('utf-8')):
+			pass
+		else:
 			print 'does not contain meta'
 			addComment(sub)
 			cur.execute("INSERT INTO seenposts (postid) VALUES ('" + s[6] + "');")
