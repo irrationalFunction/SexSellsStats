@@ -12,7 +12,7 @@
 # 0.3 message overhaul
 # 0.3.1 fixed 
 
-version='0.3.1'
+version='0.3.2'
 
 import os
 import praw
