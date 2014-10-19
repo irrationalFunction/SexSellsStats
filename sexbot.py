@@ -70,8 +70,9 @@ def addComment(sub):
 	flair = getFlair(sub.author)
 	user = r.get_redditor(sub.author)
 	days = str(getRegisteredTime(sub.author))
-	if flair == "None":
+	if flair == "None" or flair == "Unverified":
 		addmsg = "**Alert!** *This user is unverified, [click here](/r/sexsells/w/tips) for tips on protecting yourself from scammers!*\r\n\r\n"
+		flair = "None"
 	else:
 		addmsg = ""
 	gentime = str(time.strftime("%H:%M:%S EDT %D"))
