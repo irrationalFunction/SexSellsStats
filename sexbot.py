@@ -12,7 +12,7 @@
 # 0.3 message overhaul
 # 0.3.1 fixed 
 
-version='0.3.2'
+version='0.3.3'
 
 import os
 import praw
@@ -75,7 +75,7 @@ def addComment(sub):
 		flair = "None"
 	else:
 		addmsg = ""
-	gentime = str(time.strftime("%H:%M:%S EDT %D"))
+	gentime = str(time.strftime("%H:%M:%S CET %D"))
 	msg = ("""###SexSells Stats for /u/""" + str(sub.author) + """\n\r""" + addmsg + """\r\n* Verification: **""" + flair + """** [learn more](/r/sexsells/w/verification)\n\r* Account Age: **""" + days + """** Days | Karma: **""" + str((user.link_karma+user.comment_karma)) + """**\n\r* No. of Listings: **""" + str(getListings(sub.author)) + """** [view](http://www.reddit.com/r/Sexsells/search?q=author%3A""" + str(sub.author) + """ &sort=new&restrict_sr=on) | No. of Reviews: **""" + str(getReviews(sub.author)) + """** [view](http://www.reddit.com/r/Sexsells/search?q=flair%3A%27review%27+""" + str(sub.author) + """&restrict_sr=on&sort=new&t=all)\r\n\r\n---\r\n\r\n[Wiki](/r/sexsells/w/) | [FAQ](/r/sexsells/w/faq) | [Bot Info](/r/sexsells/w/bot) | [Report a Bug](http://reddit.com/message/compose/?to=b0wmz&subject=SexSellsStats Bug&message=The post with a bug is: """ + sub.short_link + """) | [Modmail](http://www.reddit.com/message/compose?to=%2Fr%2FSexsells)\r\n\r\n---\n\r^(Version """ + version + """. Generated at: """ + gentime + """)""")
 	sub.add_comment(msg)
 
