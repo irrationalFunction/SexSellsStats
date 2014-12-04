@@ -11,8 +11,10 @@
 # 0.2.5 Fixed Unicode characters not being matched by regex
 # 0.3 message overhaul
 # 0.3.1 fixed 
+# 0.3.3 Changed timezone
+# 0.3.4 Adjusted for Sold pm
 
-version='0.3.3'
+version='0.3.4'
 
 import os
 import praw
@@ -99,5 +101,8 @@ for i in feed.entries:
 		else:
 			print 'does not contain meta'
 			addComment(sub)
-			cur.execute("INSERT INTO seenposts (postid) VALUES ('" + s[6] + "');")
+			if sub.link_flair_text.lower() == "physical item":
+				cur.execute("INSERT INTO seenposts (postid) VALUES ('" + s[6] + "');")
+			else:
+				cur.execute("INSERT INTO seenposts (postid, pmed) VALUES ('" + s[6] + "', 1);")
 db.commit()
