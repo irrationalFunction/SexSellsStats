@@ -128,4 +128,4 @@ for i in feed.entries:
  			elif sub.link_flair_text.lower() == "physical item":
  				cur.execute("INSERT INTO seenposts (postid) VALUES ('" + s[6] + "');")
 
- db.commit()
+db.commit()
