@@ -14,8 +14,9 @@
 # 0.3.3 Changed timezone
 # 0.3.4 Adjusted for Sold pm
 # 0.3.5 Fixed spamming
+# 0.4 OAuth and proper caching
 
-version='0.3.5'
+version='0.4'
 
 import os
 import praw
@@ -24,6 +25,8 @@ import MySQLdb
 import re
 from datetime import datetime
 import time
+import json
+import pickle
 
 #Definitions
 user_agent=version + " /r/SexSells Notification by /u/b0wmz"
@@ -31,9 +34,28 @@ from settings import *
 
 #Create connection and auth as bot
 r = praw.Reddit(user_agent=user_agent)
-r.login(botusername, botpassword)
+#r.login(botusername, botpassword)
+with open("token", "rb") as handle: # http://stackoverflow.com/a/11027016
+	access_information = pickle.loads(handle.read())
+r.set_oauth_app_info(oauth_client_id, oauth_client_secret, oauth_redirect_uri)
+r.refresh_access_information(access_information['refresh_token'])
 db = MySQLdb.connect(mysqlhost, mysqluser, mysqlpass, mysqldb)
 cur = db.cursor()
+cache = {}
+cposts = {}
+
+# Cache
+try:
+	inputfile = open("cache.json", "r")
+	cache = json.load(inputfile)
+except IOError:
+	print "cache.json doesn't exist"
+
+try:
+	cachedposts = open("cachedposts.json", "r+")
+	cposts = json.load(cachedposts)
+except IOError:
+	print "cachedposts.json doesn't exist"
 
 def getReviews(username):
 	username = str(username)
@@ -44,15 +66,11 @@ def getReviews(username):
 	return counter
 
 def getListings(username):
-	username = str(username)
-	if username[0] == '-':
-		s = r.search(username[1:] + ' NOT title:[rvw] AND NOT title:[meta]', subreddit=subreddit, sort='new', limit=None)
-	else:
-		s = r.search('author:' + username + ' ' + 'AND NOT title:[rvw] AND NOT title:[meta]', subreddit=subreddit, sort='new', limit=None)
-	counter = 0
-	for i in s:
-		counter+=1
-	return counter
+	try:
+		print cache[username]
+	except KeyError:
+		print "0"
+	 		
 
 def getFlair(username):
 	username = str(username)
@@ -80,6 +98,7 @@ def addComment(sub):
 		addmsg = ""
 	gentime = str(time.strftime("%H:%M:%S CET %D"))
 	msg = ("""###SexSells Stats for /u/""" + str(sub.author) + """\n\r""" + addmsg + """\r\n* Verification: **""" + flair + """** [learn more](/r/sexsells/w/verification)\n\r* Account Age: **""" + days + """** Days | Karma: **""" + str((user.link_karma+user.comment_karma)) + """**\n\r* No. of Listings: **""" + str(getListings(sub.author)) + """** [view](http://www.reddit.com/r/Sexsells/search?q=author%3A""" + str(sub.author) + """ &sort=new&restrict_sr=on) | No. of Reviews: **""" + str(getReviews(sub.author)) + """** [view](http://www.reddit.com/r/Sexsells/search?q=flair%3A%27review%27+""" + str(sub.author) + """&restrict_sr=on&sort=new&t=all)\r\n\r\n---\r\n\r\n[Wiki](/r/sexsells/w/) | [FAQ](/r/sexsells/w/faq) | [Bot Info](/r/sexsells/w/bot) | [Report a Bug](http://reddit.com/message/compose/?to=b0wmz&subject=SexSellsStats Bug&message=The post with a bug is: """ + sub.short_link + """) | [Modmail](http://www.reddit.com/message/compose?to=%2Fr%2FSexsells)\r\n\r\n---\n\r^(Version """ + version + """. Generated at: """ + gentime + """)""")
+	print msg
 	sub.add_comment(msg)
 
 def getRegisteredTime(user):
@@ -90,20 +109,23 @@ def getRegisteredTime(user):
 
 feed = feedparser.parse('http://reddit.com/r/' + subreddit + '/.rss')
 
-for i in feed.entries:
-	s = i.link.split("/")
-	cur.execute("SELECT * FROM seenposts WHERE postID = '" + s[6] + "';")
-	print(cur.rowcount)
-	if cur.rowcount < 1:
-		sub = r.get_submission(i.link)
-		reg = re.compile("\[[METAmetaRVWrvwBUYbuy]+\]") # http://stackoverflow.com/questions/9942594/unicodeencodeerror-ascii-codec-cant-encode-character-u-xa0-in-position-20
-		if reg.match(sub.title.encode('utf-8')):
-			pass
-		else:
-			print 'does not contain meta'
-			addComment(sub)
+ for i in feed.entries:
+ 	s = i.link.split("/")
+ 	sub = r.get_submission(i.link)
+
+	 cur.execute("SELECT * FROM seenposts WHERE postID = '" + s[6] + "';")
+	 print(cur.rowcount)
+	 if cur.rowcount < 1:
+	 	sub = r.get_submission(i.link)
+ 		reg = re.compile("\[[METAmetaRVWrvwBUYbuy]+\]") # http://stackoverflow.com/questions/9942594/unicodeencodeerror-ascii-codec-cant-encode-character-u-xa0-in-position-20
+ 		if reg.match(sub.title.encode('utf-8')):
+ 			pass
+ 		else:
+ 			print 'does not contain meta'
+ 			addComment(sub)
 			if sub.link_flair_text is None or sub.link_flair_text.lower() != "physical item":
-				cur.execute("INSERT INTO seenposts (postid, pmed) VALUES ('" + s[6] + "', 1);")	
-			elif sub.link_flair_text.lower() == "physical item":
-				cur.execute("INSERT INTO seenposts (postid) VALUES ('" + s[6] + "');")
-db.commit()
+ 				cur.execute("INSERT INTO seenposts (postid, pmed) VALUES ('" + s[6] + "', 1);")	
+ 			elif sub.link_flair_text.lower() == "physical item":
+ 				cur.execute("INSERT INTO seenposts (postid) VALUES ('" + s[6] + "');")
+
+ db.commit()

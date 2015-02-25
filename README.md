@@ -5,7 +5,7 @@ This is a bot written for [/r/SexSells](http://reddit.com/r/SexSells) to check u
 # Requirements
 [Python](http://python.org) Written and tested using Python 2.7.3
 
-[PRAW](https://praw.readthedocs.org/en/) Written and tested using PRAW v2.1.16
+[PRAW](https://praw.readthedocs.org/en/) Written and tested using PRAW v2.1.20
 
 [Feedparser](https://pypi.python.org/pypi/feedparser) Written and tested using feedparser 5.1.3
 
