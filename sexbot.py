@@ -109,7 +109,7 @@ def getRegisteredTime(user):
 
 feed = feedparser.parse('http://reddit.com/r/' + subreddit + '/.rss')
 
- for i in feed.entries:
+for i in feed.entries:
  	s = i.link.split("/")
  	sub = r.get_submission(i.link)
 
