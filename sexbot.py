@@ -16,8 +16,9 @@
 # 0.3.5 Fixed spamming
 # 0.4 OAuth and proper caching
 # 0.4.1 Adjusted tokenpath to work with cron
+# 0.4.2 Regex doesn't match [Bra] now
 
-version='0.4'
+version='0.4.2'
 
 import os
 import praw
