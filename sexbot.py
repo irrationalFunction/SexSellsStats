@@ -15,6 +15,7 @@
 # 0.3.4 Adjusted for Sold pm
 # 0.3.5 Fixed spamming
 # 0.4 OAuth and proper caching
+# 0.4.1 Adjusted tokenpath to work with cron
 
 version='0.4'
 
@@ -35,10 +36,12 @@ from settings import *
 #Create connection and auth as bot
 r = praw.Reddit(user_agent=user_agent)
 #r.login(botusername, botpassword)
-with open("token", "rb") as handle: # http://stackoverflow.com/a/11027016
+with open(tokenpath, "rb") as handle: # http://stackoverflow.com/a/11027016
 	access_information = pickle.loads(handle.read())
 r.set_oauth_app_info(oauth_client_id, oauth_client_secret, oauth_redirect_uri)
 r.refresh_access_information(access_information['refresh_token'])
+with open(tokenpath, 'wb') as handle:
+  pickle.dump(access_information, handle)
 db = MySQLdb.connect(mysqlhost, mysqluser, mysqlpass, mysqldb)
 cur = db.cursor()
 cache = {}
@@ -66,10 +69,11 @@ def getReviews(username):
 	return counter
 
 def getListings(username):
+	username = str(username)
 	try:
-		print cache[username]
+		return cache[username]
 	except KeyError:
-		print "0"
+		return "0"
 	 		
 
 def getFlair(username):

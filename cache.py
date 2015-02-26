@@ -1,5 +1,7 @@
+#!/usr/bin/env python
 import praw
 import json
+import pickle
 
 #Definitions
 user_agent="/r/SexSells Caching by /u/b0wmz"
