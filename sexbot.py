@@ -121,7 +121,7 @@ for i in feed.entries:
 	print(cur.rowcount)
 	if cur.rowcount < 1:
 		sub = r.get_submission(i.link)
- 		reg = re.compile("\[[METAmetaRVWrvwBUYbuy]+\]") # http://stackoverflow.com/questions/9942594/unicodeencodeerror-ascii-codec-cant-encode-character-u-xa0-in-position-20
+ 		reg = re.compile("\[([^BRAbra][METAmeta]|[RVWrvw]|[BUYbuy])+\]") # http://stackoverflow.com/questions/9942594/unicodeencodeerror-ascii-codec-cant-encode-character-u-xa0-in-position-20
  		if reg.match(sub.title.encode('utf-8')):
  			pass
  		else:
