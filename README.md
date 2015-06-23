@@ -1,18 +1,10 @@
-# SexSellsStats
+# SexStatsBot
 
 This is a bot written for [/r/SexSells](http://reddit.com/r/SexSells) to check user history automatically and then comment said user history on a submission.
 
 # Requirements
-[Python](http://python.org) Written and tested using Python 2.7.3
+[Python](http://python.org) Written and tested using Python 2.7.9
 
-[PRAW](https://praw.readthedocs.org/en/) Written and tested using PRAW v2.1.20
+[PRAW](https://praw.readthedocs.org/en/) Written and tested using PRAW v3.0.0
 
-[Feedparser](https://pypi.python.org/pypi/feedparser) Written and tested using feedparser 5.1.3
-
-[MySQL-Python](https://pypi.python.org/pypi/MySQL-python/) Written and tested using MySQL-Python 1.2.5
-
-[MySQL Server](http://www.mysql.com/)
-
-
-
-[DB Dump](https://github.com/redditbot/SexSellsStats/blob/master/db.sql)
+[YAML](https://pyyaml.org/) Written and tested using PyYAML v3.11
