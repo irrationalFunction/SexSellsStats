@@ -291,7 +291,7 @@ class Sexbot:
             if match:
                 item = (match.group(1), self.db.MAIL)
                 self.db.remove_action(item)
-                self.log.info('Read sent-message %s, sent for post %s', message.id, post.id)
+                self.log.info('Read sent-message %s, sent for post %s', message.id, item[0])
             else:
                 self.log.warning('Found no post id in sent-message %s', message.id)
         sent_mail = self.reddit.get_sent(limit=None)
