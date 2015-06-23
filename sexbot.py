@@ -19,8 +19,9 @@
 # 0.4.2 Regex doesn't match [Bra] now
 # 0.5.0 Major rewrite by /u/irrational_function
 # 0.5.1 Initial version for switch
+# 0.5.2 Switch to cloudsearch syntax to handle usernames with hyphens
 
-bot_version = '0.5.1'
+bot_version = '0.5.2'
 bot_author = 'irrational_function'
 
 import time
@@ -164,10 +165,10 @@ class SexbotSubredditUtils:
         self.sr = subreddit
 
     def get_search_count_and_link(self, query):
-        s = self.sr.search(query, limit=None)
+        s = self.sr.search(query, syntax='cloudsearch', limit=None)
         count = iter_count(s)
         ret = '**' + str(count) + '** [view](/r/' + self.sr.display_name + '/search?q='
-        ret += utf8_url_quote_plus(query) + '&sort=new&restrict_sr=on)'
+        ret += utf8_url_quote_plus(query) + '&syntax=cloudsearch&sort=new&restrict_sr=on)'
         return ret
 
     def get_flair(self, user):
@@ -190,8 +191,9 @@ class SexbotSubredditUtils:
         days = str(get_registered_days(user))
         gentime = time.strftime('%T UTC %F', time.gmtime())
         karma = str(user.link_karma + user.comment_karma)
-        listings = self.get_search_count_and_link('author:"' + user.name + '"')
-        reviews = self.get_search_count_and_link('flair:"review" title:"' + user.name + '"')
+        listings = self.get_search_count_and_link("(field author '" + user.name + "')")
+        rvw_query = "(and (field flair 'review') (field title '" + user.name + "'))"
+        reviews = self.get_search_count_and_link(rvw_query)
         msg = ['###SexSells Stats for /u/' + user.name]
         msg.append('* Verification: **' + flair + '** [learn more](/r/Sexsells/w/verification)')
         msg.append('* Account Age: **' + days + '** Days | Karma: **' + karma + '**')
