@@ -20,8 +20,9 @@
 # 0.5.0 Major rewrite by /u/irrational_function
 # 0.5.1 Initial version for switch
 # 0.5.2 Switch to cloudsearch syntax to handle usernames with hyphens
+# 0.5.3 Fix line break in PM
 
-bot_version = '0.5.2'
+bot_version = '0.5.3'
 bot_author = 'irrational_function'
 
 import time
@@ -231,7 +232,7 @@ Have a question? [Message the moderators](/message/compose?to=%2Fr%2FSexsells).
         msg.append(create_mail_link('Report a Bot Bug', bot_author, subject='SexStatsBot PM Bug',
                                     message='The mail with the bug was sent regarding: '+post.short_link))
         msg.append('ID:'+ post.id + ':')
-        msg_str = ' '.join(msg)
+        msg_str = '\n'.join(msg)
         return {'subject': subject, 'message': msg_str}
 
 
