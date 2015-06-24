@@ -21,8 +21,9 @@
 # 0.5.1 Initial version for switch
 # 0.5.2 Switch to cloudsearch syntax to handle usernames with hyphens
 # 0.5.3 Fix line break in PM
+# 0.5.4 For listing count, unconditionally include the post itself
 
-bot_version = '0.5.3'
+bot_version = '0.5.4'
 bot_author = 'irrational_function'
 
 import time
@@ -165,9 +166,9 @@ class SexbotSubredditUtils:
     def __init__(self, subreddit):
         self.sr = subreddit
 
-    def get_search_count_and_link(self, query):
+    def get_search_count_and_link(self, query, result_counter=iter_count):
         s = self.sr.search(query, syntax='cloudsearch', limit=None)
-        count = iter_count(s)
+        count = result_counter(s)
         ret = '**' + str(count) + '** [view](/r/' + self.sr.display_name + '/search?q='
         ret += utf8_url_quote_plus(query) + '&syntax=cloudsearch&sort=new&restrict_sr=on)'
         return ret
@@ -189,10 +190,16 @@ class SexbotSubredditUtils:
         flair = self.get_flair(user)
         if flair is None:
             return None
+        def post_counter(iter):
+            count = 1
+            for ipost in iter:
+                if ipost.id != post.id:
+                    count += 1
+            return count
         days = str(get_registered_days(user))
         gentime = time.strftime('%T UTC %F', time.gmtime())
         karma = str(user.link_karma + user.comment_karma)
-        listings = self.get_search_count_and_link("(field author '" + user.name + "')")
+        listings = self.get_search_count_and_link("(field author '" + user.name + "')", post_counter)
         rvw_query = "(and (field flair 'review') (field title '" + user.name + "'))"
         reviews = self.get_search_count_and_link(rvw_query)
         msg = ['###SexSells Stats for /u/' + user.name]
