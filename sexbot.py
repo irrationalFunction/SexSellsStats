@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #Changelog
 # 0.1 Initial Version
 # 0.1.1 Correct number of reviews
@@ -23,19 +23,25 @@
 # 0.5.3 Fix line break in PM
 # 0.5.4 For listing count, unconditionally include the post itself
 # 0.5.5 Use "legacy search" for listing "view" links
+# 0.5.6 Switch to Python 3
 
-bot_version = '0.5.5'
+bot_version = '0.5.6'
 bot_author = 'irrational_function'
 
 import time
 import re
-import urllib
 import sqlite3
 import praw
 import argparse
 import yaml
 import logging
 import logging.config
+
+try:
+    from urllib.parse import quote_plus
+except ImportError as e:
+    from urllib import quote_plus
+
 
 def iter_count(iter):
     return sum(1 for _ in iter)
@@ -151,7 +157,7 @@ def get_registered_days(user):
     return int((now - t) / (24 * 60 * 60))
 
 def utf8_url_quote_plus(s):
-    return urllib.quote_plus(s.encode('utf-8'))
+    return quote_plus(s.encode('utf-8'))
 
 def create_mail_link(anchor_text, recip, subject=None, message=None):
     link = ['[', anchor_text, '](/message/compose/?to=', utf8_url_quote_plus(recip)]
@@ -252,7 +258,7 @@ class Sexbot:
         self.user_agent = 'Linux:Sexsells stats script:v' + bot_version + ' (by /u/' + bot_author + ')'
         self.ignore_re = re.compile('\[(meta|rvw|buy)\]', re.IGNORECASE)
         self.postid_re = re.compile('ID:([A-Za-z0-9]+):')
-        self.oauth_scope = set([u'read', u'identity', u'privatemessages', u'submit', u'modflair'])
+        self.oauth_scope = set(['read', 'identity', 'privatemessages', 'submit', 'modflair'])
         self.log = logger
         self.refresh_token = config['oauth_refresh_token']
         self.cutin_time = int(config['cutin_time'])
