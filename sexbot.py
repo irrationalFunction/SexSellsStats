@@ -24,8 +24,9 @@
 # 0.5.4 For listing count, unconditionally include the post itself
 # 0.5.5 Use "legacy search" for listing "view" links
 # 0.5.6 Switch to Python 3
+# 0.5.7 Minor update for PRAW 3.2.1
 
-bot_version = '0.5.6'
+bot_version = '0.5.7'
 bot_author = 'irrational_function'
 
 import time
@@ -258,7 +259,7 @@ class Sexbot:
         self.user_agent = 'Linux:Sexsells stats script:v' + bot_version + ' (by /u/' + bot_author + ')'
         self.ignore_re = re.compile('\[(meta|rvw|buy)\]', re.IGNORECASE)
         self.postid_re = re.compile('ID:([A-Za-z0-9]+):')
-        self.oauth_scope = set(['read', 'identity', 'privatemessages', 'submit', 'modflair'])
+        self.oauth_scope = set(['read', 'identity', 'privatemessages', 'submit', 'modflair', 'history'])
         self.log = logger
         self.refresh_token = config['oauth_refresh_token']
         self.cutin_time = int(config['cutin_time'])

@@ -1,3 +1,5 @@
 /sexbot.conf
 /sexbot.db
 /sexbot.log
+/sexbot.log.*
+/__pycache__
