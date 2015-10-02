@@ -25,10 +25,13 @@
 # 0.5.5 Use "legacy search" for listing "view" links
 # 0.5.6 Switch to Python 3
 # 0.5.7 Minor update for PRAW 3.2.1
+# 0.5.8 Workaround to exit before token expires
+#       This requires that the bot server restarts the bot on exit!
 
-bot_version = '0.5.7'
+bot_version = '0.5.8'
 bot_author = 'irrational_function'
 
+import sys
 import time
 import re
 import sqlite3
@@ -275,6 +278,11 @@ class Sexbot:
             if not self.reddit.is_oauth_session():
                 self.reddit.set_access_credentials(self.oauth_scope, cred[0], self.refresh_token)
             return
+        if cred[1] is not None and time.time() > cred[1] + 3000:
+            time.sleep(60) # avoid any possibility of hammering reddit
+            self.log.warning('Restarting due to credential timeout')
+            self.db.clear_creds()
+            sys.exit(1)
         timestamp = int(time.time())
         access_info = self.reddit.refresh_access_information(self.refresh_token)
         self.db.update_creds(access_info['access_token'], timestamp)
@@ -432,7 +440,7 @@ def make_bot(config_name=None, logger_name=None):
 def main(args):
     bot = make_bot(args.config, args.logger)
     if args.once:
-        bot.handle_iteration()
+        bot.handle_iteration(True)
     else:
         bot.loop()
 
