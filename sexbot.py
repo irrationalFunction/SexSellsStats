@@ -27,8 +27,9 @@
 # 0.5.7 Minor update for PRAW 3.2.1
 # 0.5.8 Workaround to exit before token expires
 #       This requires that the bot server restarts the bot on exit!
+# 0.5.9 Add support for flair for couples
 
-bot_version = '0.5.8'
+bot_version = '0.5.9'
 bot_author = 'irrational_function'
 
 import sys
@@ -192,6 +193,10 @@ class SexbotSubredditUtils:
             return 'Verified Seller'
         elif css == 'trustedseller' or css == 'trustedmod':
             return 'Trusted Seller'
+        elif css == 'ggcouple' or css == 'bgcouple':
+            return 'Verified Seller and Couple'
+        elif css == 'tggcouple' or css == 'tbgcouple':
+            return 'Trusted Seller and Verified Couple'
         else:
             return None
 
