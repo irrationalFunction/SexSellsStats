@@ -28,8 +28,9 @@
 # 0.5.8 Workaround to exit before token expires
 #       This requires that the bot server restarts the bot on exit!
 # 0.5.9 Add support for flair for couples
+# 0.5.10 Quote the username in the review search to fix names beginning with hyphens
 
-bot_version = '0.5.9'
+bot_version = '0.5.10'
 bot_author = 'irrational_function'
 
 import sys
@@ -218,7 +219,7 @@ class SexbotSubredditUtils:
         karma = str(user.link_karma + user.comment_karma)
         listings = self.get_search_count_and_link("(field author '" + user.name + "')",
                                                   post_counter, legacy_search=True)
-        rvw_query = "(and (field flair 'review') (field title '" + user.name + "'))"
+        rvw_query = "(and (field flair 'review') (field title '\"" + user.name + "\"'))"
         reviews = self.get_search_count_and_link(rvw_query)
         msg = ['###SexSells Stats for /u/' + user.name]
         msg.append('* Verification: **' + flair + '** [learn more](/r/Sexsells/w/verification)')
