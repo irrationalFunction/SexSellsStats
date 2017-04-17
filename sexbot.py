@@ -29,8 +29,9 @@
 #       This requires that the bot server restarts the bot on exit!
 # 0.5.9 Add support for flair for couples
 # 0.5.10 Quote the username in the review search to fix names beginning with hyphens
+# 0.6.0 Update for PRAW 4.4.0
 
-bot_version = '0.5.10'
+bot_version = '0.6.0'
 bot_author = 'irrational_function'
 
 import sys
@@ -38,6 +39,7 @@ import time
 import re
 import sqlite3
 import praw
+import prawcore
 import argparse
 import yaml
 import logging
@@ -180,7 +182,7 @@ class SexbotSubredditUtils:
         self.sr = subreddit
 
     def get_search_count_and_link(self, query, result_counter=iter_count, legacy_search=False):
-        s = self.sr.search(query, syntax='cloudsearch', limit=None)
+        s = self.sr.search(query, syntax='cloudsearch', sort='new', limit=None)
         count = result_counter(s)
         ret = '**' + str(count) + '** [view](/r/' + self.sr.display_name + '/search?q='
         ret += utf8_url_quote_plus(query) + '&syntax=cloudsearch&sort=new&restrict_sr=on'
@@ -188,7 +190,10 @@ class SexbotSubredditUtils:
         return ret
 
     def get_flair(self, user):
-        flair = self.sr.get_flair(user)
+        try:
+            flair = next(self.sr.flair(redditor=user))
+        except StopIteration as e:
+            return None
         css = flair['flair_css_class']
         if css == 'verified' or css == 'verifiedmod':
             return 'Verified Seller'
@@ -230,7 +235,7 @@ class SexbotSubredditUtils:
         msg.append('')
         msg.append('[Wiki](/r/Sexsells/w/) | [FAQ](/r/Sexsells/w/faq) | [Bot Info](/r/Sexsells/w/bot) | ')
         msg.append(create_mail_link('Report a Bug', bot_author, subject='SexStatsBot Bug',
-                                    message='The post with a bug is: ' + post.short_link) + ' | ')
+                                    message='The post with a bug is: ' + post.shortlink) + ' | ')
         msg.append(create_mail_link('Modmail', '/r/Sexsells'))
         msg.append('')
         msg.append('---')
@@ -256,7 +261,7 @@ Have a question? [Message the moderators](/message/compose?to=%2Fr%2FSexsells).
         msg = ['**Your listing: <' + post.permalink + '>**']
         msg.append(self.physical_item_body)
         msg.append(create_mail_link('Report a Bot Bug', bot_author, subject='SexStatsBot PM Bug',
-                                    message='The mail with the bug was sent regarding: '+post.short_link))
+                                    message='The mail with the bug was sent regarding: '+post.shortlink))
         msg.append('ID:'+ post.id + ':')
         msg_str = '\n'.join(msg)
         return {'subject': subject, 'message': msg_str}
@@ -270,28 +275,25 @@ class Sexbot:
         self.postid_re = re.compile('ID:([A-Za-z0-9]+):')
         self.oauth_scope = set(['read', 'identity', 'privatemessages', 'submit', 'modflair', 'history'])
         self.log = logger
-        self.refresh_token = config['oauth_refresh_token']
         self.cutin_time = int(config['cutin_time'])
         self.db = SexbotDB(config['dbpath'])
-        self.reddit = praw.Reddit(user_agent=self.user_agent)
-        self.reddit.set_oauth_app_info(config['oauth_client_id'], config['oauth_client_secret'], config['oauth_redirect_uri'])
-        self.subreddit = self.reddit.get_subreddit(config['subreddit'])
+        self.reddit = praw.Reddit(user_agent=self.user_agent,
+                                  client_id=config['oauth_client_id'],
+                                  client_secret=config['oauth_client_secret'],
+                                  redirect_uri=config['oauth_redirect_uri'],
+                                  refresh_token=config['oauth_refresh_token'])
+        self.subreddit = self.reddit.subreddit(config['subreddit'])
         self.utils = SexbotSubredditUtils(self.subreddit)
+        self.me = self.reddit.user.me()
 
     def ensure_auth(self):
-        cred = self.db.get_creds()
-        if cred[1] is not None and time.time() < cred[1] + 1800:
-            if not self.reddit.is_oauth_session():
-                self.reddit.set_access_credentials(self.oauth_scope, cred[0], self.refresh_token)
+        if time.time() + 1800 < self.reddit._core._authorizer._expiration_timestamp:
             return
-        if cred[1] is not None and time.time() > cred[1] + 3000:
+        if time.time() > self.reddit._core._authorizer._expiration_timestamp + 900:
             time.sleep(60) # avoid any possibility of hammering reddit
             self.log.warning('Restarting due to credential timeout')
-            self.db.clear_creds()
             sys.exit(1)
-        timestamp = int(time.time())
-        access_info = self.reddit.refresh_access_information(self.refresh_token)
-        self.db.update_creds(access_info['access_token'], timestamp)
+        self.reddit._core._authorizer.refresh()
 
     def handle_new_items(self, items, handler):
         ordered = []
@@ -314,7 +316,7 @@ class Sexbot:
             self.log.info('Queuing post %s by %s; %s', post.id, author_name, post.title)
             self.db.add_action(post, self.db.COMMENT)
             self.db.add_action(post, self.db.MAIL)
-        posts = self.subreddit.get_new(limit=None)
+        posts = self.subreddit.new(limit=None)
         self.handle_new_items(posts, queue_post_work)
 
     def handle_new_sents(self):
@@ -326,7 +328,7 @@ class Sexbot:
                 self.log.info('Read sent-message %s, sent for post %s', message.id, item[0])
             else:
                 self.log.warning('Found no post id in sent-message %s', message.id)
-        sent_mail = self.reddit.get_sent(limit=None)
+        sent_mail = self.reddit.inbox.sent(limit=None)
         self.handle_new_items(sent_mail, flag_mail_done)
 
     def handle_new_comments(self):
@@ -334,14 +336,14 @@ class Sexbot:
             item = (comment.submission.id, self.db.COMMENT)
             self.db.remove_action(item)
             self.log.info('Read self-comment %s on post %s', comment.id, item[0])
-        comments = self.reddit.user.get_comments(limit=None)
+        comments = self.me.comments.new(limit=None)
         self.handle_new_items(comments, flag_post_done)
 
     def do_comment(self, post):
         comment_text = self.utils.create_comment(post)
         if comment_text is not None:
             self.log.info('Commenting on post %s', post.id)
-            comment = post.add_comment(comment_text)
+            comment = post.reply(comment_text)
             self.log.info('Added comment %s on post %s', comment.id, post.id)
             return True
         else:
@@ -352,7 +354,7 @@ class Sexbot:
         mail = self.utils.create_mail(post)
         if mail is not None:
             self.log.info('Sending mail for post %s to %s', post.id, post.author.name)
-            self.reddit.send_message(post.author, raise_captcha_exception=True, **mail)
+            post.author.message(**mail)
             self.log.info('Sent mail for post %s', post.id)
             return True
         else:
@@ -366,8 +368,9 @@ class Sexbot:
         final_str = ('; final attempt' if final else '')
         self.log.info('Handling queued post %s for action %s, try %s%s', postid, action, item[3]+1, final_str)
         try:
-            post = self.reddit.get_submission(submission_id=postid)
-        except praw.errors.NotFound as e:
+            post = self.reddit.submission(id=postid)
+            post.author
+        except prawcore.exceptions.NotFound as e:
             post = None
             self.log.warning('Queued post %s was not found', postid)
         ret = False
@@ -411,11 +414,8 @@ class Sexbot:
                 next_delay = delay
                 need_update = self.handle_iteration(do_update)
                 next_delay = self.db.get_wait_time(delay)
-            except praw.errors.RateLimitExceeded as e:
-                next_delay = max(e.sleep_time, delay)
-                self.log.warning('Rate limit exceeded, sleep_time = %s', e.sleep_time)
-            except praw.errors.OAuthInvalidToken as e:
-                self.db.clear_creds()
+            except prawcore.exceptions.InvalidToken as e:
+                self.reddit._core._authorizer.refresh()
                 next_delay = 1
                 self.log.warning('Invalid OAuth token, refreshing')
             except Exception as e:

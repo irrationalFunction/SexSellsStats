@@ -5,6 +5,6 @@ This is a bot written for [/r/SexSells](http://reddit.com/r/SexSells) to check u
 # Requirements
 [Python](http://python.org) Written and tested using Python 3.4.2
 
-[PRAW](https://praw.readthedocs.org/en/) Written and tested using PRAW v3.2.1
+[PRAW](https://praw.readthedocs.org/en/) Written and tested using PRAW v4.4.0
 
-[YAML](https://pyyaml.org/) Written and tested using PyYAML v3.11
+[YAML](https://pyyaml.org/) Written and tested using PyYAML v3.12
