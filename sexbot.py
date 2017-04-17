@@ -30,8 +30,11 @@
 # 0.5.9 Add support for flair for couples
 # 0.5.10 Quote the username in the review search to fix names beginning with hyphens
 # 0.6.0 Update for PRAW 4.4.0
+# 0.6.1 Optional search limit
+# 0.6.2 Always show at most "<search_limit>+" not "<search_limit+1>+"
+#       Top-level loop lack-of-progress timeout for exit and restart
 
-bot_version = '0.6.0'
+bot_version = '0.6.2'
 bot_author = 'irrational_function'
 
 import sys
@@ -178,13 +181,18 @@ def create_mail_link(anchor_text, recip, subject=None, message=None):
 
 class SexbotSubredditUtils:
 
-    def __init__(self, subreddit):
+    def __init__(self, subreddit, search_limit=None):
         self.sr = subreddit
+        self.search_limit = search_limit
 
     def get_search_count_and_link(self, query, result_counter=iter_count, legacy_search=False):
-        s = self.sr.search(query, syntax='cloudsearch', sort='new', limit=None)
+        s = self.sr.search(query, syntax='cloudsearch', sort='new', limit=self.search_limit)
         count = result_counter(s)
-        ret = '**' + str(count) + '** [view](/r/' + self.sr.display_name + '/search?q='
+        if self.search_limit is not None and count >= self.search_limit:
+            count_str = str(self.search_limit) + '+'
+        else:
+            count_str = str(count)
+        ret = '**' + count_str + '** [view](/r/' + self.sr.display_name + '/search?q='
         ret += utf8_url_quote_plus(query) + '&syntax=cloudsearch&sort=new&restrict_sr=on'
         ret += ('&feature=legacy_search)' if legacy_search else ')')
         return ret
@@ -283,7 +291,10 @@ class Sexbot:
                                   redirect_uri=config['oauth_redirect_uri'],
                                   refresh_token=config['oauth_refresh_token'])
         self.subreddit = self.reddit.subreddit(config['subreddit'])
-        self.utils = SexbotSubredditUtils(self.subreddit)
+        search_limit = None
+        if 'search_limit' in config:
+            search_limit = int(config['search_limit'])
+        self.utils = SexbotSubredditUtils(self.subreddit, search_limit)
         self.me = self.reddit.user.me()
 
     def ensure_auth(self):
@@ -407,13 +418,19 @@ class Sexbot:
 
     def loop(self, delay=60):
         need_update = True
+        last_update = time.time()
         while True:
+            if last_update + 1800 < time.time():
+                time.sleep(60) # avoid any possibility of hammering reddit
+                self.log.warning('Restarting due to timeout')
+                sys.exit(1)
             try:
                 do_update = need_update
                 need_update = True
                 next_delay = delay
                 need_update = self.handle_iteration(do_update)
                 next_delay = self.db.get_wait_time(delay)
+                last_update = time.time()
             except prawcore.exceptions.InvalidToken as e:
                 self.reddit._core._authorizer.refresh()
                 next_delay = 1
