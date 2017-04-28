@@ -33,8 +33,9 @@
 # 0.6.1 Optional search limit
 # 0.6.2 Always show at most "<search_limit>+" not "<search_limit+1>+"
 #       Top-level loop lack-of-progress timeout for exit and restart
+# 0.6.3 Handle exceptions before the main loop gracefully
 
-bot_version = '0.6.2'
+bot_version = '0.6.3'
 bot_author = 'irrational_function'
 
 import sys
@@ -461,7 +462,17 @@ def make_bot(config_name=None, logger_name=None):
     return Sexbot(config, logger)
 
 def main(args):
-    bot = make_bot(args.config, args.logger)
+    try:
+        bot = make_bot(args.config, args.logger)
+    except Exception as e:
+        if args.once:
+            raise
+        else:
+            time.sleep(60) # avoid any possibility of hammering reddit
+            log = logging.getLogger(args.logger)
+            log.exception(e)
+            log.warning('Restarting due to startup failure')
+            sys.exit(1)
     if args.once:
         bot.handle_iteration(True)
     else:
