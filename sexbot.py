@@ -34,8 +34,9 @@
 # 0.6.2 Always show at most "<search_limit>+" not "<search_limit+1>+"
 #       Top-level loop lack-of-progress timeout for exit and restart
 # 0.6.3 Handle exceptions before the main loop gracefully
+# 0.6.4 Change search field to flair_css_class per reddit change
 
-bot_version = '0.6.3'
+bot_version = '0.6.4'
 bot_author = 'irrational_function'
 
 import sys
@@ -233,7 +234,7 @@ class SexbotSubredditUtils:
         karma = str(user.link_karma + user.comment_karma)
         listings = self.get_search_count_and_link("(field author '" + user.name + "')",
                                                   post_counter, legacy_search=True)
-        rvw_query = "(and (field flair 'review') (field title '\"" + user.name + "\"'))"
+        rvw_query = "(and (field flair_css_class 'review') (field title '\"" + user.name + "\"'))"
         reviews = self.get_search_count_and_link(rvw_query)
         msg = ['###SexSells Stats for /u/' + user.name]
         msg.append('* Verification: **' + flair + '** [learn more](/r/Sexsells/w/verification)')
