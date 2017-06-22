@@ -35,8 +35,9 @@
 #       Top-level loop lack-of-progress timeout for exit and restart
 # 0.6.3 Handle exceptions before the main loop gracefully
 # 0.6.4 Change search field to flair_css_class per reddit change
+# 0.6.5 Warn about Reddit mobile bugs
 
-bot_version = '0.6.4'
+bot_version = '0.6.5'
 bot_author = 'irrational_function'
 
 import sys
@@ -247,6 +248,11 @@ class SexbotSubredditUtils:
         msg.append(create_mail_link('Report a Bug', bot_author, subject='SexStatsBot Bug',
                                     message='The post with a bug is: ' + post.shortlink) + ' | ')
         msg.append(create_mail_link('Modmail', '/r/Sexsells'))
+        msg.append('')
+        msg.append('Links don\'t work? Reddit\'s mobile offerings have')
+        msg.append('[several](/r/redditmobile/comments/5e9l5w/bug_report_on_the_android_app_relative_links_to_a/)')
+        msg.append('[bugs](/r/mobileweb/comments/6ivok1/cloudsearch_links_dont_work/).')
+        msg.append('Try the desktop site.')
         msg.append('')
         msg.append('---')
         msg.append('^(Version ' + bot_version + '. Generated at: ' + gentime + ')')
