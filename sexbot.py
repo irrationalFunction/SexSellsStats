@@ -36,8 +36,10 @@
 # 0.6.3 Handle exceptions before the main loop gracefully
 # 0.6.4 Change search field to flair_css_class per reddit change
 # 0.6.5 Warn about Reddit mobile bugs
+# 0.6.6 Switch search links to Lucene except for hyphenated usernames
+#       Use full URLs for wiki and search links
 
-bot_version = '0.6.5'
+bot_version = '0.6.6'
 bot_author = 'irrational_function'
 
 import sys
@@ -188,16 +190,33 @@ class SexbotSubredditUtils:
         self.sr = subreddit
         self.search_limit = search_limit
 
-    def get_search_count_and_link(self, query, result_counter=iter_count, legacy_search=False):
-        s = self.sr.search(query, syntax='cloudsearch', sort='new', limit=self.search_limit)
+    def sr_link(self, text, subpath):
+        return '[' + text + '](https://www.reddit.com/r/' + self.sr.display_name + '/' + subpath + ')'
+
+    def get_search_link(self, text, query, extra_params):
+        params = [utf8_url_quote_plus(query), 'sort=new', 'restrict_sr=on'] + extra_params
+        return self.sr_link(text, 'search?q=' + '&'.join(params))
+
+    def get_search_count_and_link(self, show_cs, cs_query, lucene_query,
+                                  result_counter=iter_count, legacy_search=False):
+        extra_params = []
+        if legacy_search:
+            extra_params.append('feature=legacy_search')
+        s = self.sr.search(cs_query, syntax='cloudsearch', sort='new', limit=self.search_limit)
         count = result_counter(s)
         if self.search_limit is not None and count >= self.search_limit:
             count_str = str(self.search_limit) + '+'
         else:
             count_str = str(count)
-        ret = '**' + count_str + '** [view](/r/' + self.sr.display_name + '/search?q='
-        ret += utf8_url_quote_plus(query) + '&syntax=cloudsearch&sort=new&restrict_sr=on'
-        ret += ('&feature=legacy_search)' if legacy_search else ')')
+        ret = '**' + count_str + '** '
+        lucene_text = ('alternate link' if show_cs else 'view')
+        lucene_link = self.get_search_link(lucene_text, lucene_query, extra_params)
+        if show_cs:
+            extra_params.append('syntax=cloudsearch')
+            cs_link = self.get_search_link('view', cs_query, extra_params)
+            ret += cs_link + ' (' + lucene_link + ')'
+        else:
+            ret += lucene_link
         return ret
 
     def get_flair(self, user):
@@ -233,26 +252,37 @@ class SexbotSubredditUtils:
         days = str(get_registered_days(user))
         gentime = time.strftime('%T UTC %F', time.gmtime())
         karma = str(user.link_karma + user.comment_karma)
-        listings = self.get_search_count_and_link("(field author '" + user.name + "')",
+        show_cs = ('-' in user.name)
+        listings = self.get_search_count_and_link(show_cs, "(field author '" + user.name + "')",
+                                                  'author:"' + user.name + '"',
                                                   post_counter, legacy_search=True)
-        rvw_query = "(and (field flair_css_class 'review') (field title '\"" + user.name + "\"'))"
-        reviews = self.get_search_count_and_link(rvw_query)
+        rvw_cs_query = "(and (field flair_css_class 'review') (field title '\"" + user.name + "\"'))"
+        rvw_lucene_query = 'flair:review title:"' + user.name + '"'
+        reviews = self.get_search_count_and_link(show_cs, rvw_cs_query, rvw_lucene_query)
+        footer_links = []
+        footer_links.append(self.sr_link('Wiki', 'wiki/index'))
+        footer_links.append(self.sr_link('FAQ', 'wiki/faq'))
+        footer_links.append(self.sr_link('Bot Info', 'wiki/bot'))
+        footer_links.append(create_mail_link('Report a Bug', bot_author, subject='SexStatsBot Bug',
+                                             message='The post with a bug is: ' + post.shortlink))
+        footer_links.append(create_mail_link('Modmail', '/r/Sexsells'))
         msg = ['###SexSells Stats for /u/' + user.name]
-        msg.append('* Verification: **' + flair + '** [learn more](/r/Sexsells/w/verification)')
+        msg.append('* Verification: **' + flair + '** ' + self.sr_link('learn more', 'wiki/verification'))
         msg.append('* Account Age: **' + days + '** Days | Karma: **' + karma + '**')
         msg.append('* No. of Listings: ' + listings + ' | No. of Reviews: ' + reviews)
         msg.append('')
         msg.append('---')
         msg.append('')
-        msg.append('[Wiki](/r/Sexsells/w/) | [FAQ](/r/Sexsells/w/faq) | [Bot Info](/r/Sexsells/w/bot) | ')
-        msg.append(create_mail_link('Report a Bug', bot_author, subject='SexStatsBot Bug',
-                                    message='The post with a bug is: ' + post.shortlink) + ' | ')
-        msg.append(create_mail_link('Modmail', '/r/Sexsells'))
-        msg.append('')
-        msg.append('Links don\'t work? Reddit\'s mobile offerings have')
-        msg.append('[several](/r/redditmobile/comments/5e9l5w/bug_report_on_the_android_app_relative_links_to_a/)')
-        msg.append('[bugs](/r/mobileweb/comments/6ivok1/cloudsearch_links_dont_work/).')
-        msg.append('Try the desktop site.')
+        msg.append(' | '.join(footer_links))
+        if show_cs:
+            msg.append('')
+            msg.append('Because the seller\'s username contains a hyphen, either the "view" or "alternate link",')
+            msg.append('but not both, will work as Reddit rolls out their [improved search](/r/changelog/comments/6pi0kk/improving_search/).')
+        #msg.append('')
+        #msg.append('Links don\'t work? Reddit\'s mobile offerings have')
+        #msg.append('[several](/r/redditmobile/comments/5e9l5w/bug_report_on_the_android_app_relative_links_to_a/)')
+        #msg.append('[bugs](/r/mobileweb/comments/6ivok1/cloudsearch_links_dont_work/).')
+        #msg.append('Try the desktop site.')
         msg.append('')
         msg.append('---')
         msg.append('^(Version ' + bot_version + '. Generated at: ' + gentime + ')')
