@@ -38,8 +38,9 @@
 # 0.6.5 Warn about Reddit mobile bugs
 # 0.6.6 Switch search links to Lucene except for hyphenated usernames
 #       Use full URLs for wiki and search links
+# 0.6.7 Swap lucene/cloudsearch for hyphenated usernames
 
-bot_version = '0.6.6'
+bot_version = '0.6.7'
 bot_author = 'irrational_function'
 
 import sys
@@ -209,14 +210,10 @@ class SexbotSubredditUtils:
         else:
             count_str = str(count)
         ret = '**' + count_str + '** '
-        lucene_text = ('alternate link' if show_cs else 'view')
-        lucene_link = self.get_search_link(lucene_text, lucene_query, extra_params)
+        ret += self.get_search_link('view', lucene_query, extra_params)
         if show_cs:
             extra_params.append('syntax=cloudsearch')
-            cs_link = self.get_search_link('view', cs_query, extra_params)
-            ret += cs_link + ' (' + lucene_link + ')'
-        else:
-            ret += lucene_link
+            ret += ' (' + self.get_search_link('alternate link', cs_query, extra_params) + ')'
         return ret
 
     def get_flair(self, user):
