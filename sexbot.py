@@ -39,8 +39,9 @@
 # 0.6.6 Switch search links to Lucene except for hyphenated usernames
 #       Use full URLs for wiki and search links
 # 0.6.7 Swap lucene/cloudsearch for hyphenated usernames
+# 0.6.8 Include nsfw:yes in lucene queries
 
-bot_version = '0.6.7'
+bot_version = '0.6.8'
 bot_author = 'irrational_function'
 
 import sys
@@ -200,6 +201,7 @@ class SexbotSubredditUtils:
 
     def get_search_count_and_link(self, show_cs, cs_query, lucene_query,
                                   result_counter=iter_count, legacy_search=False):
+        lucene_query += ' nsfw:yes'
         extra_params = []
         if legacy_search:
             extra_params.append('feature=legacy_search')
