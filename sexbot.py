@@ -42,8 +42,10 @@
 # 0.6.8 Include nsfw:yes in lucene queries
 # 0.6.9 Run both fusion/lucene and cloudsearch queries and log results
 #       Report only lucene in comments (no special treatment for hyphenated)
+# 0.7.0 Use an OR lucene search for reviews if username is not lowercase
+#       Log set differences of fusion and cloudsearch results
 
-bot_version = '0.6.9'
+bot_version = '0.7.0'
 bot_author = 'irrational_function'
 
 import sys
@@ -62,9 +64,6 @@ try:
 except ImportError as e:
     from urllib import quote_plus
 
-
-def iter_count(iter):
-    return sum(1 for _ in iter)
 
 class SexbotDB:
 
@@ -202,33 +201,43 @@ class SexbotSubredditUtils:
         return self.sr_link(text, 'search?q=' + '&'.join(params))
 
     def get_search_count_and_link(self, log, typename, username, cs_query, lucene_query,
-                                  result_counter=iter_count, legacy_search=False):
+                                  include_post_id=None, legacy_search=False):
         def get_search_count(query, syntax_, search_stack):
             s = self.sr.search(query, syntax=syntax_, force_search_stack=search_stack,
                                sort='new', limit=self.search_limit)
-            count = result_counter(s)
+            ids = set(post.id for post in s)
+            if include_post_id is not None:
+                ids.add(include_post_id)
+            count = len(ids)
             if self.search_limit is not None and count >= self.search_limit:
                 count_str = str(self.search_limit) + '+'
             else:
                 count_str = str(count)
             if log is not None:
-                log.info('Found {0} {1} for {2} via {3} search stack'.format(
-                    count_str, typename, username, search_stack))
-            return count_str
+                log.info('Found %s %s for %s via %s search stack',
+                         count_str, typename, username, search_stack)
+            return (count_str, ids)
+        def log_diff(name, id_set):
+            if len(id_set) > 0:
+                id_list = list(id_set)
+                id_list.sort()
+                log.info('Only in %s: %s', name, ' '.join(id_list))
         lucene_query += ' nsfw:yes'
         extra_params = []
         if legacy_search:
             extra_params.append('feature=legacy_search')
-        count_str = get_search_count(lucene_query, 'lucene', 'fusion')
+        count_str, ids = get_search_count(lucene_query, 'lucene', 'fusion')
         try:
-            count_str_cs = get_search_count(cs_query, 'cloudsearch', 'cloudsearch')
+            count_str_cs, ids_cs = get_search_count(cs_query, 'cloudsearch', 'cloudsearch')
         except Exception as e:
             if log is not None:
                 log.exception(e)
-            count_str_cs = None
+            count_str_cs, ids_cs = None, None
         if count_str_cs is not None and count_str != count_str_cs and log is not None:
-            log.info('Discrepancy in {2} for {3}: {0} via fusion vs {1} via cloudsearch'.format(
-                count_str, count_str_cs, typename, username))
+            log.info('Discrepancy in %s for %s: %s via fusion vs %s via cloudsearch',
+                     typename, username, count_str, count_str_cs)
+            log_diff('fusion', ids - ids_cs)
+            log_diff('cloudsearch', ids_cs - ids)
         ret = '**' + count_str + '** '
         ret += self.get_search_link('view', lucene_query, extra_params)
         return ret
@@ -257,21 +266,19 @@ class SexbotSubredditUtils:
         flair = self.get_flair(user)
         if flair is None:
             return None
-        def post_counter(iter):
-            count = 1
-            for ipost in iter:
-                if ipost.id != post.id:
-                    count += 1
-            return count
         days = str(get_registered_days(user))
         gentime = time.strftime('%T UTC %F', time.gmtime())
         karma = str(user.link_karma + user.comment_karma)
         listings = self.get_search_count_and_link(log, 'listings', user.name,
                                                   "(field author '" + user.name + "')",
                                                   'author:"' + user.name + '"',
-                                                  post_counter, legacy_search=True)
+                                                  include_post_id=post.id, legacy_search=True)
+        username_lower = user.name.lower()
         rvw_cs_query = "(and (field flair_css_class 'review') (field title '\"" + user.name + "\"'))"
-        rvw_lucene_query = 'flair:review title:"' + user.name + '"'
+        if user.name == username_lower:
+            rvw_lucene_query = 'flair:review title:"' + user.name + '"'
+        else:
+            rvw_lucene_query = 'flair:review (title:"' + user.name + '" OR title:"' + username_lower + '")'
         reviews = self.get_search_count_and_link(log, 'reviews', user.name, rvw_cs_query, rvw_lucene_query)
         footer_links = []
         footer_links.append(self.sr_link('Wiki', 'wiki/index'))
@@ -460,6 +467,7 @@ class Sexbot:
             raise
 
     def loop(self, delay=60):
+        self.log.info('Starting bot ' + self.user_agent)
         need_update = True
         last_update = time.time()
         while True:
