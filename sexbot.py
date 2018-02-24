@@ -40,8 +40,10 @@
 #       Use full URLs for wiki and search links
 # 0.6.7 Swap lucene/cloudsearch for hyphenated usernames
 # 0.6.8 Include nsfw:yes in lucene queries
+# 0.6.9 Run both fusion/lucene and cloudsearch queries and log results
+#       Report only lucene in comments (no special treatment for hyphenated)
 
-bot_version = '0.6.8'
+bot_version = '0.6.9'
 bot_author = 'irrational_function'
 
 import sys
@@ -199,23 +201,36 @@ class SexbotSubredditUtils:
         params = [utf8_url_quote_plus(query), 'sort=new', 'restrict_sr=on'] + extra_params
         return self.sr_link(text, 'search?q=' + '&'.join(params))
 
-    def get_search_count_and_link(self, show_cs, cs_query, lucene_query,
+    def get_search_count_and_link(self, log, typename, username, cs_query, lucene_query,
                                   result_counter=iter_count, legacy_search=False):
+        def get_search_count(query, syntax_, search_stack):
+            s = self.sr.search(query, syntax=syntax_, force_search_stack=search_stack,
+                               sort='new', limit=self.search_limit)
+            count = result_counter(s)
+            if self.search_limit is not None and count >= self.search_limit:
+                count_str = str(self.search_limit) + '+'
+            else:
+                count_str = str(count)
+            if log is not None:
+                log.info('Found {0} {1} for {2} via {3} search stack'.format(
+                    count_str, typename, username, search_stack))
+            return count_str
         lucene_query += ' nsfw:yes'
         extra_params = []
         if legacy_search:
             extra_params.append('feature=legacy_search')
-        s = self.sr.search(cs_query, syntax='cloudsearch', sort='new', limit=self.search_limit)
-        count = result_counter(s)
-        if self.search_limit is not None and count >= self.search_limit:
-            count_str = str(self.search_limit) + '+'
-        else:
-            count_str = str(count)
+        count_str = get_search_count(lucene_query, 'lucene', 'fusion')
+        try:
+            count_str_cs = get_search_count(cs_query, 'cloudsearch', 'cloudsearch')
+        except Exception as e:
+            if log is not None:
+                log.exception(e)
+            count_str_cs = None
+        if count_str_cs is not None and count_str != count_str_cs and log is not None:
+            log.info('Discrepancy in {2} for {3}: {0} via fusion vs {1} via cloudsearch'.format(
+                count_str, count_str_cs, typename, username))
         ret = '**' + count_str + '** '
         ret += self.get_search_link('view', lucene_query, extra_params)
-        if show_cs:
-            extra_params.append('syntax=cloudsearch')
-            ret += ' (' + self.get_search_link('alternate link', cs_query, extra_params) + ')'
         return ret
 
     def get_flair(self, user):
@@ -235,7 +250,7 @@ class SexbotSubredditUtils:
         else:
             return None
 
-    def create_comment(self, post):
+    def create_comment(self, post, log=None):
         user = post.author
         if user is None:
             return None
@@ -251,13 +266,13 @@ class SexbotSubredditUtils:
         days = str(get_registered_days(user))
         gentime = time.strftime('%T UTC %F', time.gmtime())
         karma = str(user.link_karma + user.comment_karma)
-        show_cs = ('-' in user.name)
-        listings = self.get_search_count_and_link(show_cs, "(field author '" + user.name + "')",
+        listings = self.get_search_count_and_link(log, 'listings', user.name,
+                                                  "(field author '" + user.name + "')",
                                                   'author:"' + user.name + '"',
                                                   post_counter, legacy_search=True)
         rvw_cs_query = "(and (field flair_css_class 'review') (field title '\"" + user.name + "\"'))"
         rvw_lucene_query = 'flair:review title:"' + user.name + '"'
-        reviews = self.get_search_count_and_link(show_cs, rvw_cs_query, rvw_lucene_query)
+        reviews = self.get_search_count_and_link(log, 'reviews', user.name, rvw_cs_query, rvw_lucene_query)
         footer_links = []
         footer_links.append(self.sr_link('Wiki', 'wiki/index'))
         footer_links.append(self.sr_link('FAQ', 'wiki/faq'))
@@ -273,15 +288,6 @@ class SexbotSubredditUtils:
         msg.append('---')
         msg.append('')
         msg.append(' | '.join(footer_links))
-        if show_cs:
-            msg.append('')
-            msg.append('Because the seller\'s username contains a hyphen, either the "view" or "alternate link",')
-            msg.append('but not both, will work as Reddit rolls out their [improved search](/r/changelog/comments/6pi0kk/improving_search/).')
-        #msg.append('')
-        #msg.append('Links don\'t work? Reddit\'s mobile offerings have')
-        #msg.append('[several](/r/redditmobile/comments/5e9l5w/bug_report_on_the_android_app_relative_links_to_a/)')
-        #msg.append('[bugs](/r/mobileweb/comments/6ivok1/cloudsearch_links_dont_work/).')
-        #msg.append('Try the desktop site.')
         msg.append('')
         msg.append('---')
         msg.append('^(Version ' + bot_version + '. Generated at: ' + gentime + ')')
