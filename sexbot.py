@@ -394,7 +394,7 @@ class Sexbot:
         self.handle_new_items(comments, flag_post_done)
 
     def do_comment(self, post):
-        comment_text = self.utils.create_comment(post)
+        comment_text = self.utils.create_comment(post, log=self.log)
         if comment_text is not None:
             self.log.info('Commenting on post %s', post.id)
             comment = post.reply(comment_text)
