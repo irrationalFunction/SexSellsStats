@@ -44,8 +44,9 @@
 #       Report only lucene in comments (no special treatment for hyphenated)
 # 0.7.0 Use an OR lucene search for reviews if username is not lowercase
 #       Log set differences of fusion and cloudsearch results
+# 0.7.1 Use quote() instead of quote_plus() for query parameters
 
-bot_version = '0.7.0'
+bot_version = '0.7.1'
 bot_author = 'irrational_function'
 
 import sys
@@ -60,9 +61,9 @@ import logging
 import logging.config
 
 try:
-    from urllib.parse import quote_plus
+    from urllib.parse import quote
 except ImportError as e:
-    from urllib import quote_plus
+    from urllib import quote
 
 
 class SexbotDB:
@@ -175,15 +176,15 @@ def get_registered_days(user):
     now = time.time()
     return int((now - t) / (24 * 60 * 60))
 
-def utf8_url_quote_plus(s):
-    return quote_plus(s.encode('utf-8'))
+def utf8_url_quote(s):
+    return quote(s.encode('utf-8'))
 
 def create_mail_link(anchor_text, recip, subject=None, message=None):
-    link = ['[', anchor_text, '](/message/compose/?to=', utf8_url_quote_plus(recip)]
+    link = ['[', anchor_text, '](/message/compose/?to=', utf8_url_quote(recip)]
     if subject is not None:
-        link += ['&subject=', utf8_url_quote_plus(subject)]
+        link += ['&subject=', utf8_url_quote(subject)]
     if message is not None:
-        link += ['&message=', utf8_url_quote_plus(message)]
+        link += ['&message=', utf8_url_quote(message)]
     link.append(')')
     return ''.join(link)
 
@@ -197,7 +198,7 @@ class SexbotSubredditUtils:
         return '[' + text + '](https://www.reddit.com/r/' + self.sr.display_name + '/' + subpath + ')'
 
     def get_search_link(self, text, query, extra_params):
-        params = [utf8_url_quote_plus(query), 'sort=new', 'restrict_sr=on'] + extra_params
+        params = [utf8_url_quote(query), 'sort=new', 'restrict_sr=on'] + extra_params
         return self.sr_link(text, 'search?q=' + '&'.join(params))
 
     def get_search_count_and_link(self, log, typename, username, cs_query, lucene_query,
