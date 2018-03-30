@@ -46,8 +46,9 @@
 #       Log set differences of fusion and cloudsearch results
 # 0.7.1 Use quote() instead of quote_plus() for query parameters
 # 0.7.2 Add new Sexsells seller flairs
+# 0.7.3 Change text for "couple" flair
 
-bot_version = '0.7.2'
+bot_version = '0.7.3'
 bot_author = 'irrational_function'
 
 import sys
@@ -255,9 +256,9 @@ class SexbotSubredditUtils:
         elif css == 'trustedseller' or css == 'trustedmod' or css == 'ts18' or css == 'trustedmod18':
             return 'Trusted Seller'
         elif css == 'ggcouple' or css == 'bgcouple' or css == 'ggcouple18' or css == 'bgcouple18':
-            return 'Verified Seller and Couple'
+            return 'Verified Couple'
         elif css == 'tggcouple' or css == 'tbgcouple' or css == 'tggcouple18' or css == 'tbgcouple18':
-            return 'Trusted Seller and Verified Couple'
+            return 'Trusted Couple'
         else:
             return None
 
