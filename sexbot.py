@@ -45,8 +45,9 @@
 # 0.7.0 Use an OR lucene search for reviews if username is not lowercase
 #       Log set differences of fusion and cloudsearch results
 # 0.7.1 Use quote() instead of quote_plus() for query parameters
+# 0.7.2 Add new Sexsells seller flairs
 
-bot_version = '0.7.1'
+bot_version = '0.7.2'
 bot_author = 'irrational_function'
 
 import sys
@@ -249,13 +250,13 @@ class SexbotSubredditUtils:
         except StopIteration as e:
             return None
         css = flair['flair_css_class']
-        if css == 'verified' or css == 'verifiedmod':
+        if css == 'verified' or css == 'verifiedmod' or css == 'v18' or css == 'verifiedmod18':
             return 'Verified Seller'
-        elif css == 'trustedseller' or css == 'trustedmod':
+        elif css == 'trustedseller' or css == 'trustedmod' or css == 'ts18' or css == 'trustedmod18':
             return 'Trusted Seller'
-        elif css == 'ggcouple' or css == 'bgcouple':
+        elif css == 'ggcouple' or css == 'bgcouple' or css == 'ggcouple18' or css == 'bgcouple18':
             return 'Verified Seller and Couple'
-        elif css == 'tggcouple' or css == 'tbgcouple':
+        elif css == 'tggcouple' or css == 'tbgcouple' or css == 'tggcouple18' or css == 'tbgcouple18':
             return 'Trusted Seller and Verified Couple'
         else:
             return None
