@@ -48,8 +48,9 @@
 # 0.7.2 Add new Sexsells seller flairs
 # 0.7.3 Change text for "couple" flair
 # 0.7.4 Drop cloudsearch search
+# 0.7.5 Improve configurability
 
-bot_version = '0.7.4'
+bot_version = '0.7.5'
 bot_author = 'irrational_function'
 
 import sys
@@ -193,9 +194,15 @@ def create_mail_link(anchor_text, recip, subject=None, message=None):
 
 class SexbotSubredditUtils:
 
-    def __init__(self, subreddit, search_limit=None):
+    def __init__(self, subreddit, config):
         self.sr = subreddit
-        self.search_limit = search_limit
+        self.sr_name = config['subreddit']
+        self.search_limit = None
+        if 'search_limit' in config:
+            self.search_limit = int(config['search_limit'])
+        self.flair_css_map = config['flair_css']
+        sr_links = config['subreddit_links']
+        self.fixed_links = ' | '.join(self.sr_link(x['text'], x['url']) for x in sr_links)
 
     def sr_link(self, text, subpath):
         return '[' + text + '](https://www.reddit.com/r/' + self.sr.display_name + '/' + subpath + ')'
@@ -234,14 +241,8 @@ class SexbotSubredditUtils:
         except StopIteration as e:
             return None
         css = flair['flair_css_class']
-        if css == 'verified' or css == 'verifiedmod' or css == 'v18' or css == 'verifiedmod18':
-            return 'Verified Seller'
-        elif css == 'trustedseller' or css == 'trustedmod' or css == 'ts18' or css == 'trustedmod18':
-            return 'Trusted Seller'
-        elif css == 'ggcouple' or css == 'bgcouple' or css == 'ggcouple18' or css == 'bgcouple18':
-            return 'Verified Couple'
-        elif css == 'tggcouple' or css == 'tbgcouple' or css == 'tggcouple18' or css == 'tbgcouple18':
-            return 'Trusted Couple'
+        if css in self.flair_css_map:
+            return self.flair_css_map[css]
         else:
             return None
 
@@ -265,13 +266,11 @@ class SexbotSubredditUtils:
             rvw_query = 'flair:review (title:"' + user.name + '" OR title:"' + username_lower + '")'
         reviews = self.get_search_count_and_link(log, 'reviews', user.name, rvw_query)
         footer_links = []
-        footer_links.append(self.sr_link('Wiki', 'wiki/index'))
-        footer_links.append(self.sr_link('FAQ', 'wiki/faq'))
-        footer_links.append(self.sr_link('Bot Info', 'wiki/bot'))
+        footer_links.append(self.fixed_links)
         footer_links.append(create_mail_link('Report a Bug', bot_author, subject='SexStatsBot Bug',
                                              message='The post with a bug is: ' + post.shortlink))
-        footer_links.append(create_mail_link('Modmail', '/r/Sexsells'))
-        msg = ['###SexSells Stats for /u/' + user.name]
+        footer_links.append(create_mail_link('Modmail', '/r/' + self.sr.display_name))
+        msg = ['###' + self.sr_name + ' Stats for /u/' + user.name]
         msg.append('* Verification: **' + flair + '** ' + self.sr_link('learn more', 'wiki/verification'))
         msg.append('* Account Age: **' + days + '** Days | Karma: **' + karma + '**')
         msg.append('* No. of Listings: ' + listings + ' | No. of Reviews: ' + reviews)
@@ -312,7 +311,7 @@ Have a question? [Message the moderators](/message/compose?to=%2Fr%2FSexsells).
 class Sexbot:
 
     def __init__(self, config, logger):
-        self.user_agent = 'Linux:Sexsells stats script:v' + bot_version + ' (by /u/' + bot_author + ')'
+        self.user_agent = 'Linux:' + config['subreddit'] + ' stats script:v' + bot_version + ' (by /u/' + bot_author + ')'
         self.ignore_re = re.compile('\[(meta|rvw|buy)\]', re.IGNORECASE)
         self.postid_re = re.compile('ID:([A-Za-z0-9]+):')
         self.oauth_scope = set(['read', 'identity', 'privatemessages', 'submit', 'modflair', 'history'])
@@ -325,10 +324,9 @@ class Sexbot:
                                   redirect_uri=config['oauth_redirect_uri'],
                                   refresh_token=config['oauth_refresh_token'])
         self.subreddit = self.reddit.subreddit(config['subreddit'])
-        search_limit = None
-        if 'search_limit' in config:
-            search_limit = int(config['search_limit'])
-        self.utils = SexbotSubredditUtils(self.subreddit, search_limit)
+        self.subreddit.fullname
+        self.utils = SexbotSubredditUtils(self.subreddit, config)
+        self.disable_mail = 'disable_mail' in config and int(config['disable_mail']) != 0
         self.me = self.reddit.user.me()
 
     def ensure_auth(self):
@@ -360,7 +358,8 @@ class Sexbot:
                 return
             self.log.info('Queuing post %s by %s; %s', post.id, author_name, post.title)
             self.db.add_action(post, self.db.COMMENT)
-            self.db.add_action(post, self.db.MAIL)
+            if not self.disable_mail:
+                self.db.add_action(post, self.db.MAIL)
         posts = self.subreddit.new(limit=None)
         self.handle_new_items(posts, queue_post_work)
 
@@ -444,7 +443,8 @@ class Sexbot:
             self.handle_new_posts()
             if self_update:
                 self.handle_new_comments()
-                self.handle_new_sents()
+                if not self.disable_mail:
+                    self.handle_new_sents()
             return self.handle_work_queue()
         except Exception as e:
             self.db.rollback()
