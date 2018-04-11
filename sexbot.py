@@ -49,8 +49,9 @@
 # 0.7.3 Change text for "couple" flair
 # 0.7.4 Drop cloudsearch search
 # 0.7.5 Improve configurability
+# 0.7.6 Make bot name configurable (except for outgoing PMs)
 
-bot_version = '0.7.5'
+bot_version = '0.7.6'
 bot_author = 'irrational_function'
 
 import sys
@@ -194,9 +195,10 @@ def create_mail_link(anchor_text, recip, subject=None, message=None):
 
 class SexbotSubredditUtils:
 
-    def __init__(self, subreddit, config):
+    def __init__(self, subreddit, bot_name, config):
         self.sr = subreddit
         self.sr_name = config['subreddit']
+        self.bot_name = bot_name
         self.search_limit = None
         if 'search_limit' in config:
             self.search_limit = int(config['search_limit'])
@@ -267,7 +269,7 @@ class SexbotSubredditUtils:
         reviews = self.get_search_count_and_link(log, 'reviews', user.name, rvw_query)
         footer_links = []
         footer_links.append(self.fixed_links)
-        footer_links.append(create_mail_link('Report a Bug', bot_author, subject='SexStatsBot Bug',
+        footer_links.append(create_mail_link('Report a Bug', bot_author, subject=self.bot_name+' Bug',
                                              message='The post with a bug is: ' + post.shortlink))
         footer_links.append(create_mail_link('Modmail', '/r/' + self.sr.display_name))
         msg = ['###' + self.sr_name + ' Stats for /u/' + user.name]
@@ -325,9 +327,9 @@ class Sexbot:
                                   refresh_token=config['oauth_refresh_token'])
         self.subreddit = self.reddit.subreddit(config['subreddit'])
         self.subreddit.fullname
-        self.utils = SexbotSubredditUtils(self.subreddit, config)
-        self.disable_mail = 'disable_mail' in config and int(config['disable_mail']) != 0
         self.me = self.reddit.user.me()
+        self.utils = SexbotSubredditUtils(self.subreddit, self.me.name, config)
+        self.disable_mail = 'disable_mail' in config and int(config['disable_mail']) != 0
 
     def ensure_auth(self):
         if time.time() + 1800 < self.reddit._core._authorizer._expiration_timestamp:
