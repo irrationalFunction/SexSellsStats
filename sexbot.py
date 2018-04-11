@@ -47,8 +47,9 @@
 # 0.7.1 Use quote() instead of quote_plus() for query parameters
 # 0.7.2 Add new Sexsells seller flairs
 # 0.7.3 Change text for "couple" flair
+# 0.7.4 Drop cloudsearch search
 
-bot_version = '0.7.3'
+bot_version = '0.7.4'
 bot_author = 'irrational_function'
 
 import sys
@@ -203,11 +204,10 @@ class SexbotSubredditUtils:
         params = [utf8_url_quote(query), 'sort=new', 'restrict_sr=on'] + extra_params
         return self.sr_link(text, 'search?q=' + '&'.join(params))
 
-    def get_search_count_and_link(self, log, typename, username, cs_query, lucene_query,
+    def get_search_count_and_link(self, log, typename, username, query,
                                   include_post_id=None, legacy_search=False):
-        def get_search_count(query, syntax_, search_stack):
-            s = self.sr.search(query, syntax=syntax_, force_search_stack=search_stack,
-                               sort='new', limit=self.search_limit)
+        def get_search_count(query):
+            s = self.sr.search(query, syntax='lucene', sort='new', limit=self.search_limit)
             ids = set(post.id for post in s)
             if include_post_id is not None:
                 ids.add(include_post_id)
@@ -217,32 +217,15 @@ class SexbotSubredditUtils:
             else:
                 count_str = str(count)
             if log is not None:
-                log.info('Found %s %s for %s via %s search stack',
-                         count_str, typename, username, search_stack)
+                log.info('Found %s %s for %s', count_str, typename, username)
             return (count_str, ids)
-        def log_diff(name, id_set):
-            if len(id_set) > 0:
-                id_list = list(id_set)
-                id_list.sort()
-                log.info('Only in %s: %s', name, ' '.join(id_list))
-        lucene_query += ' nsfw:yes'
+        query += ' nsfw:yes'
         extra_params = []
         if legacy_search:
             extra_params.append('feature=legacy_search')
-        count_str, ids = get_search_count(lucene_query, 'lucene', 'fusion')
-        try:
-            count_str_cs, ids_cs = get_search_count(cs_query, 'cloudsearch', 'cloudsearch')
-        except Exception as e:
-            if log is not None:
-                log.exception(e)
-            count_str_cs, ids_cs = None, None
-        if count_str_cs is not None and count_str != count_str_cs and log is not None:
-            log.info('Discrepancy in %s for %s: %s via fusion vs %s via cloudsearch',
-                     typename, username, count_str, count_str_cs)
-            log_diff('fusion', ids - ids_cs)
-            log_diff('cloudsearch', ids_cs - ids)
+        count_str, ids = get_search_count(query)
         ret = '**' + count_str + '** '
-        ret += self.get_search_link('view', lucene_query, extra_params)
+        ret += self.get_search_link('view', query, extra_params)
         return ret
 
     def get_flair(self, user):
@@ -273,16 +256,14 @@ class SexbotSubredditUtils:
         gentime = time.strftime('%T UTC %F', time.gmtime())
         karma = str(user.link_karma + user.comment_karma)
         listings = self.get_search_count_and_link(log, 'listings', user.name,
-                                                  "(field author '" + user.name + "')",
                                                   'author:"' + user.name + '"',
                                                   include_post_id=post.id, legacy_search=True)
         username_lower = user.name.lower()
-        rvw_cs_query = "(and (field flair_css_class 'review') (field title '\"" + user.name + "\"'))"
         if user.name == username_lower:
-            rvw_lucene_query = 'flair:review title:"' + user.name + '"'
+            rvw_query = 'flair:review title:"' + user.name + '"'
         else:
-            rvw_lucene_query = 'flair:review (title:"' + user.name + '" OR title:"' + username_lower + '")'
-        reviews = self.get_search_count_and_link(log, 'reviews', user.name, rvw_cs_query, rvw_lucene_query)
+            rvw_query = 'flair:review (title:"' + user.name + '" OR title:"' + username_lower + '")'
+        reviews = self.get_search_count_and_link(log, 'reviews', user.name, rvw_query)
         footer_links = []
         footer_links.append(self.sr_link('Wiki', 'wiki/index'))
         footer_links.append(self.sr_link('FAQ', 'wiki/faq'))
