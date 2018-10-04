@@ -50,8 +50,9 @@
 # 0.7.4 Drop cloudsearch search
 # 0.7.5 Improve configurability
 # 0.7.6 Make bot name configurable (except for outgoing PMs)
+# 0.7.7 Do not include nsfw:yes in queries
 
-bot_version = '0.7.6'
+bot_version = '0.7.7'
 bot_author = 'irrational_function'
 
 import sys
@@ -228,7 +229,6 @@ class SexbotSubredditUtils:
             if log is not None:
                 log.info('Found %s %s for %s', count_str, typename, username)
             return (count_str, ids)
-        query += ' nsfw:yes'
         extra_params = []
         if legacy_search:
             extra_params.append('feature=legacy_search')
